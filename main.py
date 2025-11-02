@@ -1,10 +1,10 @@
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram.enums import ContentType, ParseMode
 from aiogram.filters import CommandStart
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram_dialog.widgets.input import TextInput, ManagedTextInput
+from aiogram_dialog.widgets.input import TextInput, ManagedTextInput, MessageInput
 from environs import Env
 from aiogram.fsm.state import State, StatesGroup
 from aiogram_dialog.widgets.kbd import Button, Row, Column, Url, Select, Group, Back, Next, Cancel, Start, SwitchTo
@@ -59,9 +59,6 @@ class StartSG(StatesGroup):
     send_message = State()
 
     choice_change = State()
-    add_wish = State()
-    add_wish_detail = State()
-    choice_date_add_wish = State()
 
 
 # Выбор Категории
@@ -179,7 +176,7 @@ async def calendar(callback: CallbackQuery, widget, dialog_manager: DialogManage
 
 
 # Результат
-async def result(callback: CallbackQuery, widget, dialog_manager: DialogManager):
+async def result(message: Message, callback: CallbackQuery, widget: MessageInput, dialog_manager: DialogManager):
     await dialog_manager.switch_to(state=StartSG.result)
 
 
@@ -207,42 +204,37 @@ async def correct_text(callback: CallbackQuery, widget: TextInput, dialog_manage
     dialog_manager.dialog_data['item'] = text
     order.update(dialog_manager.dialog_data)
     print(order)
-    await dialog_manager.switch_to(state=StartSG.choice_date_add_wish)
+    await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
-async def correct_text_work_repair(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
-                                   text: str):
+async def correct_text_repair(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
+                              text: str):
     dialog_manager.dialog_data['item'] = 'Отремонтировать 🛠: ' + text
     order.update(dialog_manager.dialog_data)
     print(order)
-    await dialog_manager.switch_to(state=StartSG.choice_date_add_wish)
+    await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
-async def correct_text_work_buy(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
-                                text: str):
+async def correct_text_buy(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
+                           text: str):
     dialog_manager.dialog_data['item'] = 'Купить 💵: ' + text
     order.update(dialog_manager.dialog_data)
     print(order)
-    await dialog_manager.switch_to(state=StartSG.choice_date_add_wish)
-
-
-async def correct_text_car_repair(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager, text: str):
-    dialog_manager.dialog_data['item'] = 'Отремонтировать 🛠: ' + text
-    order.update(dialog_manager.dialog_data)
-    print(order)
-    await dialog_manager.switch_to(state=StartSG.choice_date_add_wish)
-
-
-async def correct_text_car_buy(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager, text: str):
-    dialog_manager.dialog_data['item'] = 'Купить 💵: ' + text
-    order.update(dialog_manager.dialog_data)
-    print(order)
-    await dialog_manager.switch_to(state=StartSG.choice_date_add_wish)
+    await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
 async def error_text(callback: CallbackQuery, widget: ManagedTextInput, dialog_manager: DialogManager,
                      error: ValueError):
     await dialog_manager.switch_to(state=StartSG.add_wish_detail)
+
+
+# Отправка не текста
+async def no_text(message: Message, widget: MessageInput, dialog_manager: DialogManager):
+    dialog_manager.dialog_data['item'] = 'Новое желание'
+    order.update(dialog_manager.dialog_data)
+    print(order)
+    await dialog_manager.switch_to(state=StartSG.choice_date)
+    await message.send_copy(chat_id=CHAT_ID)
 
 
 # ГЕТТЕРЫ
@@ -290,7 +282,7 @@ async def massage_getter(**kwargs):
 # Подарки
 async def present_getter(**kwargs):
     presents = [
-        ('Носки с котенком Гавом 🧦', 1), ('Мармелад 🍡', 2)
+        ('Мармелад 🍡', 1)
     ]
     return {'presents': presents}
 
@@ -357,10 +349,7 @@ start_dialog = Dialog(
     ),
     Window(
         Format('<b>Привет, {username}! 👋☺️</b>\n\nЕсли у Вас есть какое-нибудь желание, '
-               'я в этом помогу!\n\n<b>Начинаем?</b>\n\n\n'
-               '<i><u>Для подробного ознакомления со всеми предложениями, '
-               'а также для добавления нового желания перейдите на официальный сайт</u></i> ⬇️'),
-        Url(Const('🌐 Перейти 🌐'), url=Const('https://julia-site.ru/'), id='b_site'),
+               'я в этом помогу!\n\n<b>Начинаем?</b>\n'),
         Row(
             Next(Const('✅ Давай!'), id='yes'),
             Back(Const('❎ Не хочу!'), id='no'),
@@ -382,7 +371,6 @@ start_dialog = Dialog(
             ),
             width=2
         ),
-        SwitchTo(Const('🆕 Добавить желание'), id='add_wish', state=StartSG.add_wish),
         Back(Const('◀️ Назад'), id='b_back'),
         state=StartSG.category,
         getter=category_getter,
@@ -401,6 +389,8 @@ start_dialog = Dialog(
             ),
             width=2
         ),
+        TextInput(id='new_wish', type_factory=add_wish_detail, on_success=correct_text, on_error=error_text),
+        MessageInput(func=no_text, content_types=ContentType.ANY),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.category),
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
         state=StartSG.restaurant,
@@ -458,6 +448,8 @@ start_dialog = Dialog(
             ),
             width=2
         ),
+        TextInput(id='new_wish', type_factory=add_wish_detail, on_success=correct_text, on_error=error_text),
+        MessageInput(func=no_text, content_types=ContentType.ANY),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.category),
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
         state=StartSG.present,
@@ -524,7 +516,7 @@ start_dialog = Dialog(
     # ХОЗ. РАБОТЫ - ОТРЕМОНТИРОВАТЬ
     Window(
         Const('<b>Напишите что отремонтировать в квартире</b>'),
-        TextInput(id='new_wish_work_repair', type_factory=add_wish_detail, on_success=correct_text_work_repair,
+        TextInput(id='new_wish_work_repair', type_factory=add_wish_detail, on_success=correct_text_repair,
                   on_error=error_text),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.work),
         state=StartSG.add_wish_work_repair,
@@ -533,7 +525,7 @@ start_dialog = Dialog(
     # ХОЗ. РАБОТЫ - КУПИТЬ
     Window(
         Const('<b>Напишите что купить домой</b>'),
-        TextInput(id='new_wish_work_buy', type_factory=add_wish_detail, on_success=correct_text_work_buy,
+        TextInput(id='new_wish_work_buy', type_factory=add_wish_detail, on_success=correct_text_buy,
                   on_error=error_text),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.work),
         state=StartSG.add_wish_work_buy,
@@ -561,7 +553,7 @@ start_dialog = Dialog(
     # МАШИНА - ОТРЕМОНТИРОВАТЬ
     Window(
         Const('<b>Напишите что отремонтировать в машине</b>'),
-        TextInput(id='new_wish_car_repair', type_factory=add_wish_detail, on_success=correct_text_car_repair,
+        TextInput(id='new_wish_car_repair', type_factory=add_wish_detail, on_success=correct_text_repair,
                   on_error=error_text),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.car),
         state=StartSG.add_wish_car_repair,
@@ -570,7 +562,7 @@ start_dialog = Dialog(
     # МАШИНА - КУПИТЬ
     Window(
         Const('<b>Напишите что купить в машину</b>'),
-        TextInput(id='new_wish_car_buy', type_factory=add_wish_detail, on_success=correct_text_car_buy,
+        TextInput(id='new_wish_car_buy', type_factory=add_wish_detail, on_success=correct_text_buy,
                   on_error=error_text),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.car),
         state=StartSG.add_wish_car_buy,
@@ -664,50 +656,6 @@ start_dialog = Dialog(
         ),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.result),
         state=StartSG.choice_change
-    ),
-
-    # НОВОЕ ЖЕЛАНИЕ
-    Window(
-        Const('<b>Выберете категорию 🔠</b>'),
-        Group(
-            Row(
-                SwitchTo(Const('🥂 Ресторан'), id='restaurant', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('🥘 Блюдо'), id='food', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('💆‍♀️ Массаж'), id='massage', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('🎁 Подарки'), id='presents', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('👫 Прогулки'), id='walks', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('🏯 Экскурсии'), id='excursions', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('🏠 По дому'), id='works', state=StartSG.add_wish_detail, on_click=add_wish),
-                SwitchTo(Const('🚙 Машина'), id='cars', state=StartSG.add_wish_detail, on_click=add_wish),
-            ),
-            width=2,
-        ),
-        SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.category),
-        state=StartSG.add_wish,
-    ),
-
-    # ЗАПИСЬ ЖЕЛАНИЯ
-    Window(
-        Const('<b>Напишите Ваше желание</b>'),
-        TextInput(id='new_wish', type_factory=add_wish_detail, on_success=correct_text, on_error=error_text),
-        SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.add_wish),
-        state=StartSG.add_wish_detail,
-    ),
-
-    # ДАТА НОВОГО ЖЕЛАНИЯ
-    Window(
-        Const('️❤️‍🔥 <b>Прекрасный выбор!</b> ❤️‍🔥\n\nУкажите дату 📆'),
-        Group(
-            Row(
-                SwitchTo(Const('Сегодня 👌'), id='today', state=StartSG.choice_time, on_click=date_selection),
-                SwitchTo(Const('Завтра 👉'), id='tomorrow', state=StartSG.choice_time, on_click=date_selection),
-                SwitchTo(Const('Без даты 🤷‍♀️'), id='no_date', state=StartSG.choice_time, on_click=date_selection),
-            ),
-            width=2
-        ),
-        SwitchTo(Const('Выбрать дату'), id='choice_date', state=StartSG.calendar),
-        SwitchTo(Const('Назад'), id='b_back', state=StartSG.add_wish_detail),
-        state=StartSG.choice_date_add_wish
     ),
 )
 
