@@ -237,6 +237,21 @@ async def no_text(message: Message, widget: MessageInput, dialog_manager: Dialog
     await message.send_copy(chat_id=CHAT_ID)
 
 
+# Отправка текста, где он не предполагается
+def not_text(text):
+    if isinstance(text, str):
+        return text
+    raise ValueError
+
+
+async def not_text_answer(message: Message, callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager):
+    await message.answer('Здесь не предполагается ввод текста')
+
+
+async def not_text_answer_other(message: Message, widget: MessageInput, dialog_manager: DialogManager):
+    await message.answer('В данном окне предполагается выбор')
+
+
 # ГЕТТЕРЫ
 # Приветствие
 async def username_getter(event_from_user: User, **kwargs):
@@ -354,6 +369,8 @@ start_dialog = Dialog(
             Next(Const('✅ Давай!'), id='yes'),
             Back(Const('❎ Не хочу!'), id='no'),
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         getter=username_getter,
         state=StartSG.start,
     ),
@@ -371,6 +388,8 @@ start_dialog = Dialog(
             ),
             width=2
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         Back(Const('◀️ Назад'), id='b_back'),
         state=StartSG.category,
         getter=category_getter,
@@ -595,6 +614,8 @@ start_dialog = Dialog(
             ),
             width=2
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         SwitchTo(Const('📆 Выбрать дату'), id='choice_date', state=StartSG.calendar),
         Button(Const('◀️ Назад'), id='b_back', on_click=back_to_category),
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
@@ -607,6 +628,8 @@ start_dialog = Dialog(
         Calendar(id='calendar', on_click=calendar),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.choice_date),
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         state=StartSG.calendar
     ),
 
@@ -623,6 +646,8 @@ start_dialog = Dialog(
             ),
             width=4
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.choice_date),
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
         state=StartSG.choice_time,
@@ -640,6 +665,8 @@ start_dialog = Dialog(
             SwitchTo(Const('🔄 Изменить!'), id='change', state=StartSG.choice_change),
             SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         getter=result_getter,
         state=StartSG.result
     ),
@@ -670,6 +697,8 @@ start_dialog = Dialog(
             ),
             width=3,
         ),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.result),
         state=StartSG.choice_change
     ),
