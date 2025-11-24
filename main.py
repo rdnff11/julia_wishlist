@@ -43,6 +43,7 @@ class StartSG(StatesGroup):
     present = State()
     walk = State()
     excursion = State()
+    bath = State()
 
     work = State()
     add_wish_work_repair = State()
@@ -72,8 +73,8 @@ async def category_selection(callback: CallbackQuery, widget, dialog_manager: Di
         print(order)
         category_state = {
             '🥂 Рестораны': StartSG.restaurant, '🍔 Еда': StartSG.food, '💆‍♀️ Массаж': StartSG.massage,
-            '🎁 Подарки': StartSG.present, '👫 Прогулки': StartSG.walk, '🏯 Экскурсии': StartSG.excursion,
-            '🏠 По дому': StartSG.work, '🚙 Машина': StartSG.car
+            '🛁 Ванна': StartSG.bath, '🎁 Подарки': StartSG.present, '👫 Прогулки': StartSG.walk,
+            '🏯 Экскурсии': StartSG.excursion, '🏠 По дому': StartSG.work, '🚙 Машина': StartSG.car
         }
         await dialog_manager.switch_to(state=category_state[selected_category[0]])
 
@@ -82,8 +83,8 @@ async def category_selection(callback: CallbackQuery, widget, dialog_manager: Di
 async def item_selection(callback: CallbackQuery, widget, dialog_manager: DialogManager, item_id: str, item_type: str):
     getters = {
         'restaurant': restaurant_getter, 'food': food_getter, 'massage': massage_getter,
-        'present': present_getter, 'walk': walk_getter, 'excursion': excursion_getter,
-        'work': working_getter, 'car': car_getter
+        'bath': bath_getter, 'present': present_getter, 'walk': walk_getter,
+        'excursion': excursion_getter, 'work': working_getter, 'car': car_getter
     }
     items_data = await getters[item_type]()
     items_key = f"{item_type}s"
@@ -141,8 +142,8 @@ async def item_selection_car(callback: CallbackQuery, widget, dialog_manager: Di
 async def back_to_category(callback: CallbackQuery, widget, dialog_manager: DialogManager):
     category_state = {
         '🥂 Рестораны': StartSG.restaurant, '🍔 Еда': StartSG.food, '💆‍♀️ Массаж': StartSG.massage,
-        '🎁 Подарки': StartSG.present, '👫 Прогулки': StartSG.walk, '🏯 Экскурсии': StartSG.excursion,
-        '🏠 По дому': StartSG.work, '🚙 Машина': StartSG.car
+        '🛁 Ванна': StartSG.bath, '🎁 Подарки': StartSG.present, '👫 Прогулки': StartSG.walk,
+        '🏯 Экскурсии': StartSG.excursion, '🏠 По дому': StartSG.work, '🚙 Машина': StartSG.car
     }
     current_category = order.get('category')
     if current_category in category_state:
@@ -262,8 +263,8 @@ async def username_getter(event_from_user: User, **kwargs):
 async def category_getter(**kwargs):
     categories = [
         ('🥂 Рестораны', 1), ('🍔 Еда', 2), ('💆‍♀️ Массаж', 3),
-        ('🎁 Подарки', 4), ('👫 Прогулки', 5), ('🏯 Экскурсии', 6),
-        ('🏠 По дому', 7), ('🚙 Машина', 8)
+        ('🛁 Ванна', 4), ('🎁 Подарки', 5), ('👫 Прогулки', 6),
+        ('🏯 Экскурсии', 7), ('🏠 По дому', 8), ('🚙 Машина', 9)
     ]
     return {'categories': categories}
 
@@ -292,6 +293,14 @@ async def massage_getter(**kwargs):
         ('"Пяточки" 🦶', 1), ('Ножки 🦵', 2), ('Комплексный 🙌  ', 3), ('Массажер 🔫', 4)
     ]
     return {'massages': massages}
+
+
+# Ванна
+async def bath_getter(**kwargs):
+    baths = [
+        ('С пенкой 🩵', 1), ('С солью 💚', 2), ('С уточкой 🐥', 3), ('Комплексный ❤️  ', 4)
+    ]
+    return {'baths': baths}
 
 
 # Подарки
@@ -386,7 +395,7 @@ start_dialog = Dialog(
                 items='categories',
                 on_click=category_selection,
             ),
-            width=2
+            width=3
         ),
         TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
         MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
@@ -456,6 +465,27 @@ start_dialog = Dialog(
         SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
         state=StartSG.massage,
         getter=massage_getter
+    ),
+
+    # ВАННА
+    Window(
+        Const('Какую <b>ванну</b> 🛁 хотите принять?'),
+        Group(
+            Select(
+                Format('{item[0]}'),
+                id='bath',
+                item_id_getter=lambda x: x[1],
+                items='baths',
+                on_click=lambda c, w, d, i: item_selection(c, w, d, i, 'bath'),
+            ),
+            width=2
+        ),
+        TextInput(id='new_wish', type_factory=add_wish_detail, on_success=correct_text, on_error=error_text),
+        MessageInput(func=no_text, content_types=ContentType.ANY),
+        SwitchTo(Const('◀️ Назад'), id='b_back', state=StartSG.category),
+        SwitchTo(Const('❎ Отменить заказ!'), id='cancel', state=StartSG.no_click),
+        state=StartSG.bath,
+        getter=bath_getter
     ),
 
     # ПОДАРКИ
@@ -687,6 +717,7 @@ start_dialog = Dialog(
                 SwitchTo(Const('🥂 Ресторан'), id='restaurant', state=StartSG.restaurant),
                 SwitchTo(Const('🥘 Блюдо'), id='food', state=StartSG.food),
                 SwitchTo(Const('💆‍♀️ Массаж'), id='massage', state=StartSG.massage),
+                SwitchTo(Const('🛁 Ванна'), id='bath', state=StartSG.bath),
                 SwitchTo(Const('🎁 Подарки'), id='presents', state=StartSG.present),
                 SwitchTo(Const('👫 Прогулки'), id='walks', state=StartSG.walk),
                 SwitchTo(Const('🏯 Экскурсии'), id='excursions', state=StartSG.excursion),
