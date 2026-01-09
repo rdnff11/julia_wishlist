@@ -201,31 +201,32 @@ def add_wish_detail(text):
     raise ValueError
 
 
-async def correct_text(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager, text: str):
+async def correct_text(message: Message, widget: TextInput, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data['item'] = text
     order.update(dialog_manager.dialog_data)
     print(order)
+    await message.delete()
     await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
-async def correct_text_repair(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
-                              text: str):
+async def correct_text_repair(message: Message, widget: TextInput, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data['item'] = 'Отремонтировать 🛠: ' + text
     order.update(dialog_manager.dialog_data)
     print(order)
+    await message.delete()
     await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
-async def correct_text_buy(callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager,
-                           text: str):
+async def correct_text_buy(message: Message, widget: TextInput, dialog_manager: DialogManager, text: str):
     dialog_manager.dialog_data['item'] = 'Купить 💵: ' + text
     order.update(dialog_manager.dialog_data)
     print(order)
+    await message.delete()
     await dialog_manager.switch_to(state=StartSG.choice_date)
 
 
-async def error_text(callback: CallbackQuery, widget: ManagedTextInput, dialog_manager: DialogManager,
-                     error: ValueError):
+async def error_text(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, error: ValueError):
+    await message.delete()
     await dialog_manager.switch_to(state=StartSG.add_wish_detail)
 
 
@@ -234,6 +235,7 @@ async def no_text(message: Message, widget: MessageInput, dialog_manager: Dialog
     dialog_manager.dialog_data['item'] = 'Новое желание'
     order.update(dialog_manager.dialog_data)
     print(order)
+    await message.delete()
     await dialog_manager.switch_to(state=StartSG.choice_date)
     await message.send_copy(chat_id=CHAT_ID)
 
@@ -246,10 +248,12 @@ def not_text(text):
 
 
 async def not_text_answer(message: Message, callback: CallbackQuery, widget: TextInput, dialog_manager: DialogManager):
+    await message.delete()
     await message.answer('Здесь не предполагается ввод текста')
 
 
 async def not_text_answer_other(message: Message, widget: MessageInput, dialog_manager: DialogManager):
+    await message.delete()
     await message.answer('В данном окне предполагается выбор')
 
 
