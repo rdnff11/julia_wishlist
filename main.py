@@ -708,7 +708,8 @@ start_dialog = Dialog(
     # ВЕРНО
     Window(
         Const('<b>Ваш заказ сформирован!</b>'),
-        SwitchTo(Const('✅ Создать новый заказ'), id='new_order', state=StartSG.category),
+        TextInput(id='not_text', type_factory=not_text, on_success=not_text_answer),
+        MessageInput(func=not_text_answer_other, content_types=ContentType.ANY),
         state=StartSG.send_message
     ),
 
@@ -744,6 +745,7 @@ start_dialog = Dialog(
 @router.message(CommandStart())
 async def command_start_process(message: Message, dialog_manager: DialogManager):
     await dialog_manager.start(state=StartSG.start, mode=StartMode.RESET_STACK)
+    await message.delete()
 
 
 dp.include_router(router)
